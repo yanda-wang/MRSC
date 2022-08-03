@@ -38,8 +38,8 @@ OPT_MODEL_MAX_EPOCH = params.OPT_MODEL_MAX_EPOCH
 TRAIN_RATIO = params.TRAIN_RATIO
 TEST_RATIO = params.TEST_RATIO
 
-LOG_FILE = 'data/log/SumCoverSelAttnCombGateFixed_optimization.log'
-CHECKPOINT_FILE = 'data/hyper-model/SumCoverSelAttnCombGateFixed_checkpoint.pkl'
+LOG_FILE = 'data/log/SumCover_optimization.log'
+CHECKPOINT_FILE = 'data/hyper-model/SumCover_checkpoint.pkl'
 
 
 def concatenate_single_admission(records):
