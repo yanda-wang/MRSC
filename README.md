@@ -30,7 +30,7 @@ ndc2atc_level4.csv
 
 ndc2rxnorm_mapping.txt (you can find these two files in MRSC/data)
 
-THen run the file DataProcessing.py
+Then run the code in DataProcessing.py
 
 # Codes
 
