@@ -9,15 +9,15 @@ from skorch.utils import params_for
 from warnings import filterwarnings
 
 from Parameters import Params
-from Networks import Encoder
-from Networks import DecoderSumCover
-from Networks import DecoderGRUCover
+from Networks import EncoderLinearQuery
+from Networks import DecoderSumCoverSelAttnCombGateFixed
+from Networks import DecoderGRUCoverGateSelCombFixed
 
 params = Params()
 
-PATIENT_RECORDS_FILE = params.PATIENT_RECORDS_FILE  
-CONCEPTID_FILE = params.CONCEPTID_FILE  
-EHR_ADJ_FILE = params.EHR_MATRIX_FILE  
+PATIENT_RECORDS_FILE = params.PATIENT_RECORDS_FILE  # 'data/patient_records_accumulate_tail_top100'
+CONCEPTID_FILE = params.CONCEPTID_FILE  # 'data/concepts2id_mapping'
+EHR_ADJ_FILE = params.EHR_MATRIX_FILE  # 'data/ehr_matrix_0.5'
 DEVICE = params.device  # torch.device("cuda" if USE_CUDA else "cpu")
 MEDICATION_COUNT = params.MEDICATION_COUNT
 DIAGNOSES_COUNT = params.DIAGNOSES_COUNT
@@ -27,18 +27,18 @@ OPT_SPLIT_TAG_ADMISSION = params.OPT_SPLIT_TAG_ADMISSION  # -1
 OPT_SPLIT_TAG_VARIABLE = params.OPT_SPLIT_TAG_VARIABLE  # -2
 OPT_MODEL_MAX_EPOCH = params.OPT_MODEL_MAX_EPOCH
 
-LOSS_PROPORTION_BCE = params.LOSS_PROPORTION_BCE
-LOSS_PROPORTION_MULTI = params.LOSS_PROPORTION_Multi_Margin
+LOSS_PROPORTION_BCE = params.LOSS_PROPORTION_BCE  # 0.9
+LOSS_PROPORTION_MULTI = params.LOSS_PROPORTION_Multi_Margin  # 0.1
 LOSS_PROPORTION_COVERAGE = params.LOSS_PROPORTION_Coverage
 
 
-class MedRecGRUCover(nn.Module):
+class MedRecSeq2SetGRUCoverGateSelCombFixed(nn.Module):
     def __init__(self, device, input_size, hidden_size, diagnose_count, procedures_count, medication_count, **kwargs):
         super().__init__()
-        self.encoder = Encoder(device, input_size, hidden_size, diagnose_count, procedures_count,
-                               **params_for('encoder', kwargs))
-        self.decoder = DecoderGRUCover(device, hidden_size, medication_count,
-                                       **params_for('decoder', kwargs))
+        self.encoder = EncoderLinearQuery(device, input_size, hidden_size, diagnose_count, procedures_count,
+                                          **params_for('encoder', kwargs))
+        self.decoder = DecoderGRUCoverGateSelCombFixed(device, hidden_size, medication_count,
+                                                       **params_for('decoder', kwargs))
         self.device = device
 
     def split_records(self, x):
@@ -69,7 +69,7 @@ class MedRecGRUCover(nn.Module):
         return output
 
 
-class MedRecGRUCoverTrainer(skorch.NeuralNet):
+class MedRecSeq2SetTrainer(skorch.NeuralNet):
     def __init__(self, *args, optimizer_encoder=optim.Adam, optimizer_decoder=optim.Adam, **kwargs):
         self.optimizer_encoder = optimizer_encoder
         self.optimizer_decoder = optimizer_decoder
@@ -134,7 +134,7 @@ class MedRecGRUCoverTrainer(skorch.NeuralNet):
                 predict = skorch.utils.to_numpy(torch.sigmoid(output))[0]
             y_probas.append(predict)
 
-        return np.array(y_probas)
+        return np.array(y_probas, dtype=object)
 
     def predict_proba(self, X):
         return self._predict(X, most_probable=False)
@@ -143,14 +143,14 @@ class MedRecGRUCoverTrainer(skorch.NeuralNet):
         return self._predict(X, most_probable=True)
 
 
-class MedRecSumCover(nn.Module):
+class MedRecSeq2SetSumCoverSelAttnCombGateFixed(nn.Module):
     def __init__(self, device, input_size, hidden_size, diagnose_count, procedures_count, medication_count, **kwargs):
         super().__init__()
-        self.encoder = Encoder(device, input_size, hidden_size, diagnose_count, procedures_count,
-                               **params_for('encoder', kwargs))
+        self.encoder = EncoderLinearQuery(device, input_size, hidden_size, diagnose_count, procedures_count,
+                                          **params_for('encoder', kwargs))
 
-        self.decoder = DecoderSumCover(device, hidden_size, medication_count,
-                                       **params_for('decoder', kwargs))
+        self.decoder = DecoderSumCoverSelAttnCombGateFixed(device, hidden_size, medication_count,
+                                                           **params_for('decoder', kwargs))
         self.device = device
 
     def split_records(self, x):
@@ -181,7 +181,7 @@ class MedRecSumCover(nn.Module):
         return {'output': output, 'coverage_loss': coverage_loss}
 
 
-class MedRecSumCoverTrainer(skorch.NeuralNet):
+class MedRecSeq2SetSumCoverTrainer(skorch.NeuralNet):
     def __init__(self, *args, optimizer_encoder=optim.Adam, optimizer_decoder=optim.Adam, **kwargs):
         self.optimizer_encoder = optimizer_encoder
         self.optimizer_decoder = optimizer_decoder
@@ -256,10 +256,21 @@ class MedRecSumCoverTrainer(skorch.NeuralNet):
                 predict = skorch.utils.to_numpy(torch.sigmoid(output))[0]
             y_probas.append(predict)
 
-        return np.array(y_probas)
+        return np.array(y_probas, dtype=object)
 
     def predict_proba(self, X):
         return self._predict(X, most_probable=False)
 
     def predict(self, X):
         return self._predict(X, most_probable=True)
+
+
+def test(x, y, **kwargs):
+    print(x)
+    print(y)
+    print(kwargs['loss_context_a'])
+    print(kwargs['loss_context_b'])
+
+
+if __name__ == '__main__':
+    test(1, 2, loss_context_a=1.3, loss_context_b=4.2)
