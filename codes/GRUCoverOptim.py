@@ -20,7 +20,7 @@ params = Params()
 
 PATIENT_RECORDS_FILE = params.PATIENT_RECORDS_FILE
 CONCEPTID_FILE = params.CONCEPTID_FILE
-EHR_MATRIX_FILE = params.EHR_MATRIX_FILE  # 'data/ehr_matrix_0.5'
+EHR_MATRIX_FILE = params.EHR_MATRIX_FILE 
 DEVICE = params.device  # torch.device("cuda" if USE_CUDA else "cpu")
 MEDICATION_COUNT = params.MEDICATION_COUNT
 DIAGNOSES_COUNT = params.DIAGNOSES_COUNT
@@ -39,8 +39,8 @@ OPT_MODEL_MAX_EPOCH = params.OPT_MODEL_MAX_EPOCH
 TRAIN_RATIO = params.TRAIN_RATIO
 TEST_RATIO = params.TEST_RATIO
 
-LOG_FILE = 'data/log/GRUCoverGateSelCombFixed_optimization.log'
-CHECKPOINT_FILE = 'data/hyper-model/GRUCoverGateSelCombFixed_checkpoint.pkl'
+LOG_FILE = 'data/log/GRUCoverOptim.log'
+CHECKPOINT_FILE = 'data/hyper-model/GRUCover_checkpoint.pkl'
 
 
 def concatenate_single_admission(records):
