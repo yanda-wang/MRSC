@@ -18,6 +18,20 @@ Here is an example of the data. There are two admissions for the patient. For th
 
 \[\[\[4,3,6,5\],\[34,2,35,3\],\[8,75,6,34\]\],\[\[8,56,34,23\],\[18,34,26,4\],\[82,13,73,4\]\]\]
 
+To prepare datasets for MRSC, one needs to prepare the following files and put them into a file named as "data" in the project:
+
+DIAGNOSES_ICD.csv
+
+PROCEDURES_ICD.csv
+
+PRESCRIPTIONS.csv (you can download these three files from [MIMIC](https://mimic.mit.edu))
+
+ndc2atc_level4.csv
+
+ndc2rxnorm_mapping.txt (you can find these two files in MRSC/data)
+
+THen run the file DataProcessing.py
+
 # Codes
 
 Networks: basic components of the model, including the encoder, decoders based on sum based coverage and GRU based coverage.
