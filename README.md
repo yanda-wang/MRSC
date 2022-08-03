@@ -34,6 +34,8 @@ THen run the file DataProcessing.py
 
 # Codes
 
+DataProcessing: preapre datasets that are required to run MRSC
+
 Networks: basic components of the model, including the encoder, decoders based on sum based coverage and GRU based coverage.
 
 GRUCoverOptim.py: hyper-parameters tuning for GRU based coverage model
