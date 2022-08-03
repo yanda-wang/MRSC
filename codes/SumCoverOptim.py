@@ -1,11 +1,13 @@
 import sys
+
+import dill
 import skorch
 import torch.nn as nn
 import numpy as np
 import pandas as pd
 
 from torch import optim
-from Optimization import MedRecSumCover, MedRecSumCoverTrainer
+from Optimization import MedRecSeq2SetSumCoverSelAttnCombGateFixed, MedRecSeq2SetSumCoverTrainer
 from skopt.space import Real, Integer, Categorical
 from skopt.utils import use_named_args
 from skopt import gp_minimize
@@ -18,11 +20,13 @@ params = Params()
 
 PATIENT_RECORDS_FILE = params.PATIENT_RECORDS_FILE
 CONCEPTID_FILE = params.CONCEPTID_FILE
-EHR_MATRIX_FILE = params.EHR_MATRIX_FILE
+EHR_MATRIX_FILE = params.EHR_MATRIX_FILE  # 'data/ehr_matrix_0.5'
 DEVICE = params.device  # torch.device("cuda" if USE_CUDA else "cpu")
 MEDICATION_COUNT = params.MEDICATION_COUNT
 DIAGNOSES_COUNT = params.DIAGNOSES_COUNT
 PROCEDURES_COUNT = params.PROCEDURES_COUNT
+
+ENCODER_TYPE = params.ENCODER_TYPE
 
 DIAGNOSE_INDEX = params.DIAGNOSE_INDEX
 MEDICATION_INDEX = params.MEDICATION_INDEX
@@ -34,8 +38,8 @@ OPT_MODEL_MAX_EPOCH = params.OPT_MODEL_MAX_EPOCH
 TRAIN_RATIO = params.TRAIN_RATIO
 TEST_RATIO = params.TEST_RATIO
 
-LOG_FILE = 'data/log/SumCover_optimization.log'
-CHECKPOINT_FILE = 'data/hyper-model/SumCover_checkpoint.pkl'
+LOG_FILE = 'data/log/SumCoverSelAttnCombGateFixed_optimization.log'
+CHECKPOINT_FILE = 'data/hyper-model/SumCoverSelAttnCombGateFixed_checkpoint.pkl'
 
 
 def concatenate_single_admission(records):
@@ -62,7 +66,7 @@ def get_x_y(patient_records):
             x.append(np.array(current_x))
             target = adm[MEDICATION_INDEX]
             y.append(np.array(target))
-    return np.array(x), np.array(y)
+    return np.array(x, dtype=object), np.array(y, dtype=object)
 
 
 def get_data(patient_records_file):
@@ -117,7 +121,7 @@ search_space = [Categorical(categories=['64', '128', '200', '256', '300', '400']
 def fitness(dimension, encoder_n_layers, encoder_embedding_dropout_rate, encoder_gru_dropout_rate, decoder_dropout_rate,
             decoder_hop_count, decoder_attn_type_kv, decoder_attn_type_embedding, decoder_least_adm_count,
             decoder_select_adm_count, decoder_regular_hop_count, optimizer_encoder_lr, optimizer_decoder_lr):
-    ehr_matrix = np.load(EHR_MATRIX_FILE)
+    ehr_matrix = np.load(EHR_MATRIX_FILE, allow_pickle=True)
     input_size = int(dimension)
     hidden_size = int(dimension)
 
@@ -140,11 +144,11 @@ def fitness(dimension, encoder_n_layers, encoder_embedding_dropout_rate, encoder
 
     print()
 
-    model = MedRecSumCoverTrainer(criterion=nn.BCEWithLogitsLoss, optimizer_encoder=optim.Adam,
+    model = MedRecSeq2SetSumCoverTrainer(criterion=nn.BCEWithLogitsLoss, optimizer_encoder=optim.Adam,
                                          optimizer_decoder=optim.Adam, max_epochs=OPT_MODEL_MAX_EPOCH, batch_size=1,
                                          train_split=None,
                                          callbacks=[skorch.callbacks.ProgressBar(batches_per_epoch='auto'), ],
-                                         device=DEVICE, module=MedRecSumCover,
+                                         device=DEVICE, module=MedRecSeq2SetSumCoverSelAttnCombGateFixed,
                                          module__device=DEVICE,
                                          module__input_size=input_size, module__hidden_size=hidden_size,
                                          module__diagnose_count=DIAGNOSES_COUNT,
@@ -203,4 +207,4 @@ def optimize(n_calls):
 
 
 if __name__ == "__main__":
-    optimize(25)
+    optimize(10)
