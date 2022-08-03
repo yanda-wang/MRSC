@@ -8,14 +8,11 @@ import numpy as np
 from dateutil import relativedelta
 from tqdm import tqdm
 
-patients_file = 'data/PATIENTS.csv'
-admission_file = 'data/ADMISSIONS.csv'
 med_file = 'data/PRESCRIPTIONS.csv'
 diag_file = 'data/DIAGNOSES_ICD.csv'
 procedure_file = 'data/PROCEDURES_ICD.csv'
 
 ndc2atc_file = 'data/ndc2atc_level4.csv'
-cid_atc = 'data/drug-atc.csv'
 ndc2rxnorm_file = 'data/ndc2rxnorm_mapping.txt'
 
 PATIENT_RECORDS_FILE = 'data/patient_records.pkl'  # 以ICD和ATC表示疾病以及药品的病人记录，后续会转换成vocabulary表示的记录
