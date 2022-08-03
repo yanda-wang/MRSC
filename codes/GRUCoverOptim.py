@@ -1,11 +1,13 @@
 import sys
+
+import dill
 import skorch
 import torch.nn as nn
 import numpy as np
 import pandas as pd
 
 from torch import optim
-from Optimization import MedRecGRUCover, MedRecGRUCoverTrainer
+from Optimization import MedRecSeq2SetGRUCoverGateSelCombFixed, MedRecSeq2SetTrainer
 from skopt.space import Real, Integer, Categorical
 from skopt.utils import use_named_args
 from skopt import gp_minimize
@@ -18,11 +20,13 @@ params = Params()
 
 PATIENT_RECORDS_FILE = params.PATIENT_RECORDS_FILE
 CONCEPTID_FILE = params.CONCEPTID_FILE
-EHR_MATRIX_FILE = params.EHR_MATRIX_FILE
+EHR_MATRIX_FILE = params.EHR_MATRIX_FILE  # 'data/ehr_matrix_0.5'
 DEVICE = params.device  # torch.device("cuda" if USE_CUDA else "cpu")
 MEDICATION_COUNT = params.MEDICATION_COUNT
 DIAGNOSES_COUNT = params.DIAGNOSES_COUNT
 PROCEDURES_COUNT = params.PROCEDURES_COUNT
+
+# ENCODER_TYPE = params.ENCODER_TYPE
 
 DIAGNOSE_INDEX = params.DIAGNOSE_INDEX
 PROCEDURES_INDEX = params.PROCEDURE_INDEX
@@ -35,8 +39,8 @@ OPT_MODEL_MAX_EPOCH = params.OPT_MODEL_MAX_EPOCH
 TRAIN_RATIO = params.TRAIN_RATIO
 TEST_RATIO = params.TEST_RATIO
 
-LOG_FILE = 'data/log/GRUCover_optimization.log'
-CHECKPOINT_FILE = 'data/hyper-model/GRUCover_checkpoint.pkl'
+LOG_FILE = 'data/log/GRUCoverGateSelCombFixed_optimization.log'
+CHECKPOINT_FILE = 'data/hyper-model/GRUCoverGateSelCombFixed_checkpoint.pkl'
 
 
 def concatenate_single_admission(records):
@@ -63,7 +67,7 @@ def get_x_y(patient_records):
             x.append(np.array(current_x))
             target = adm[MEDICATION_INDEX]
             y.append(np.array(target))
-    return np.array(x), np.array(y)
+    return np.array(x, dtype=object), np.array(y, dtype=object)
 
 
 def get_data(patient_records_file):
@@ -103,7 +107,7 @@ search_space = [Categorical(categories=['64', '128', '200', '256', '300', '400']
 
                 Real(low=0, high=0.95, name='decoder_dropout_rate'),
                 Integer(low=5, high=15, name='decoder_least_adm_count'),
-                Integer(low=10, high=20, name='decoder_hop_count'),
+                Integer(low=10, high=30, name='decoder_hop_count'),
                 Integer(low=1, high=100, name='decoder_coverage_dim'),
                 Categorical(categories=['dot', 'general', 'concat'], name='decoder_attn_type_kv'),
                 Categorical(categories=['dot', 'general', 'concat'], name='decoder_attn_type_embedding'),
@@ -118,7 +122,7 @@ search_space = [Categorical(categories=['64', '128', '200', '256', '300', '400']
 def fitness(dimension, encoder_n_layers, encoder_embedding_dropout_rate, encoder_gru_dropout_rate, decoder_dropout_rate,
             decoder_least_adm_count, decoder_hop_count, decoder_coverage_dim, decoder_attn_type_kv,
             decoder_attn_type_embedding, decoder_regular_hop_count, optimizer_encoder_lr, optimizer_decoder_lr):
-    ehr_matrix = np.load(EHR_MATRIX_FILE)
+    ehr_matrix = np.load(EHR_MATRIX_FILE, allow_pickle=True)
     input_size = int(dimension)
     hidden_size = int(dimension)
 
@@ -141,31 +145,30 @@ def fitness(dimension, encoder_n_layers, encoder_embedding_dropout_rate, encoder
 
     print()
 
-    model = MedRecGRUCoverTrainer(criterion=nn.BCEWithLogitsLoss, optimizer_encoder=optim.Adam,
-                                  optimizer_decoder=optim.Adam, max_epochs=OPT_MODEL_MAX_EPOCH, batch_size=1,
-                                  train_split=None,
-                                  callbacks=[skorch.callbacks.ProgressBar(batches_per_epoch='auto'), ],
-                                  device=DEVICE, module=MedRecGRUCover,
-                                  module__device=DEVICE, module__input_size=input_size, module__hidden_size=hidden_size,
-                                  module__diagnose_count=DIAGNOSES_COUNT, module__procedures_count=PROCEDURES_COUNT,
-                                  module__medication_count=MEDICATION_COUNT,
+    model = MedRecSeq2SetTrainer(criterion=nn.BCEWithLogitsLoss, optimizer_encoder=optim.Adam,
+                                 optimizer_decoder=optim.Adam, max_epochs=OPT_MODEL_MAX_EPOCH, batch_size=1,
+                                 train_split=None, callbacks=[skorch.callbacks.ProgressBar(batches_per_epoch='auto'), ],
+                                 device=DEVICE, module=MedRecSeq2SetGRUCoverGateSelCombFixed,
+                                 module__device=DEVICE, module__input_size=input_size, module__hidden_size=hidden_size,
+                                 module__diagnose_count=DIAGNOSES_COUNT, module__procedures_count=PROCEDURES_COUNT,
+                                 module__medication_count=MEDICATION_COUNT,
 
-                                  module__encoder__n_layers=encoder_n_layers.item(),
-                                  module__encoder__embedding_dropout_rate=encoder_embedding_dropout_rate,
-                                  module__encoder__gru_dropout_rate=encoder_gru_dropout_rate,
+                                 module__encoder__n_layers=encoder_n_layers.item(),
+                                 module__encoder__embedding_dropout_rate=encoder_embedding_dropout_rate,
+                                 module__encoder__gru_dropout_rate=encoder_gru_dropout_rate,
 
-                                  module__decoder__dropout_rate=decoder_dropout_rate,
-                                  module__decoder__least_adm_count=decoder_least_adm_count,
-                                  module__decoder__hop_count=decoder_hop_count,
-                                  module__decoder__coverage_dim=decoder_coverage_dim,
-                                  module__decoder__attn_type_kv=decoder_attn_type_kv,
-                                  module__decoder__attn_type_embedding=decoder_attn_type_embedding,
-                                  module__decoder__regular_hop_count=decoder_regular_hop_count,
-                                  module__decoder__ehr_adj=ehr_matrix,
+                                 module__decoder__dropout_rate=decoder_dropout_rate,
+                                 module__decoder__least_adm_count=decoder_least_adm_count,
+                                 module__decoder__hop_count=decoder_hop_count,
+                                 module__decoder__coverage_dim=decoder_coverage_dim,
+                                 module__decoder__attn_type_kv=decoder_attn_type_kv,
+                                 module__decoder__attn_type_embedding=decoder_attn_type_embedding,
+                                 module__decoder__regular_hop_count=decoder_regular_hop_count,
+                                 module__decoder__ehr_adj=ehr_matrix,
 
-                                  optimizer_encoder__lr=optimizer_encoder_lr,
-                                  optimizer_decoder__lr=optimizer_decoder_lr
-                                  )
+                                 optimizer_encoder__lr=optimizer_encoder_lr,
+                                 optimizer_decoder__lr=optimizer_decoder_lr
+                                 )
 
     train_x, train_y, test_x, test_y = get_data(PATIENT_RECORDS_FILE)
     model.fit(train_x, train_y)
@@ -200,4 +203,4 @@ def optimize(n_calls):
 
 
 if __name__ == "__main__":
-    optimize(25)
+    optimize(10)
