@@ -20,7 +20,7 @@ params = Params()
 
 PATIENT_RECORDS_FILE = params.PATIENT_RECORDS_FILE
 CONCEPTID_FILE = params.CONCEPTID_FILE
-EHR_MATRIX_FILE = params.EHR_MATRIX_FILE  # 'data/ehr_matrix_0.5'
+EHR_MATRIX_FILE = params.EHR_MATRIX_FILE
 DEVICE = params.device  # torch.device("cuda" if USE_CUDA else "cpu")
 MEDICATION_COUNT = params.MEDICATION_COUNT
 DIAGNOSES_COUNT = params.DIAGNOSES_COUNT
@@ -207,4 +207,4 @@ def optimize(n_calls):
 
 
 if __name__ == "__main__":
-    optimize(10)
+    optimize(25)
