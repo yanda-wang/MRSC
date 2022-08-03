@@ -203,4 +203,4 @@ def optimize(n_calls):
 
 
 if __name__ == "__main__":
-    optimize(10)
+    optimize(25)
