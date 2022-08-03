@@ -39,7 +39,7 @@ OPT_MODEL_MAX_EPOCH = params.OPT_MODEL_MAX_EPOCH
 TRAIN_RATIO = params.TRAIN_RATIO
 TEST_RATIO = params.TEST_RATIO
 
-LOG_FILE = 'data/log/GRUCoverOptim.log'
+LOG_FILE = 'data/log/GRUCover_optimization.log'
 CHECKPOINT_FILE = 'data/hyper-model/GRUCover_checkpoint.pkl'
 
 
